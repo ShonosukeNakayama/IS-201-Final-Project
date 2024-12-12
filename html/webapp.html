@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D Hockey Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #d0e0f0;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        #gameCanvas {
+            background-color: white;
+            display: none;
+            border: 5px solid black;
+        }
+        .scoreboard {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: black;
+            font-size: 24px;
+            font-weight: bold;
+            display: none;
+        }
+        #startButton, #levelButton, #returnButton {
+            font-size: 20px;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        #returnButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: none;
+        }
+        #gameTitle {
+            font-size: 36px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #returnLink {
+            font-size: 22px;
+            font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+            color: black;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="gameTitle">The Best Hockey Game On Earth</h1>
+    <a id="returnLink" href="../index.html">Click here to return</a>
+    <button id="startButton">Start Game</button>
+    <button id="levelButton">Select Level</button>
+    <button id="returnButton">Return</button>
+    <div class="scoreboard" id="scoreboard">
+        Player: 0 | AI: 0
+    </div>
+    <canvas id="gameCanvas" width="1000" height="500"></canvas>
+    <audio id="backgroundMusic" loop>
+        <source src="path/to/your/music.mp3" type="audio/mpeg">
+    </audio>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const startButton = document.getElementById("startButton");
+        const levelButton = document.getElementById("levelButton");
+        const returnButton = document.getElementById("returnButton");
+        const scoreboard = document.getElementById("scoreboard");
+        const backgroundMusic = document.getElementById("backgroundMusic");
+        const returnLink = document.getElementById("returnLink");
+
+        let PLAYER_RADIUS = 12;
+        let BALL_RADIUS = 8;
+        let FRICTION = 0.98;
+        let MAX_BALL_SPEED = 6;
+        let PLAYER_SPEED = 5;
+        let AI_SPEED = 3;
+        let CHASING_AI_SPEED = 2;
+        const GOAL_HEIGHT = 100;
+        const GOAL_WIDTH = 10;
+        const WINNING_SCORE = 5;
+        const STEAL_DISTANCE = 30;
+
+        let keys = {};
+        let players = [];
+        let aiPlayers = [];
+        let ball = { x: canvas.width / 2, y: canvas.height / 2, vx: 0, vy: 0, color: "black" };
+        let playerScore = 0;
+        let aiScore = 0;
+        let gameRunning = false;
+        let difficulty = "normal";
+
+        window.addEventListener("keydown", (e) => (keys[e.key] = true));
+        window.addEventListener("keyup", (e) => (keys[e.key] = false));
+        startButton.addEventListener("click", startGame);
+        levelButton.addEventListener("click", selectLevel);
+        returnButton.addEventListener("click", returnToMenu);
+
+        function selectLevel() {
+            const level = prompt("Select difficulty (easy/normal/hard):", "normal");
+            if (level && ["easy", "normal", "hard"].includes(level.toLowerCase())) {
+                difficulty = level.toLowerCase();
+                alert(`Difficulty set to ${difficulty}`);
+            } else {
+                alert("Invalid difficulty. Setting to normal.");
+                difficulty = "normal";
+            }
+        }
+
+        function adjustDifficulty() {
+            switch (difficulty) {
+                case "easy":
+                    MAX_BALL_SPEED = 4;
+                    AI_SPEED = 2;
+                    CHASING_AI_SPEED = 1.5;
+                    break;
+                case "normal":
+                    MAX_BALL_SPEED = 6;
+                    AI_SPEED = 3;
+                    CHASING_AI_SPEED = 2;
+                    break;
+                case "hard":
+                    MAX_BALL_SPEED = 8;
+                    AI_SPEED = 4;
+                    CHASING_AI_SPEED = 3;
+                    break;
+            }
+        }
+
+        function startBackgroundMusic() {
+            backgroundMusic.volume = 0.5;
+            backgroundMusic.play();
+        }
+
+        function startGame() {
+            if (!gameRunning) {
+                gameRunning = true;
+                adjustDifficulty();
+                canvas.style.display = "block";
+                scoreboard.style.display = "block";
+                returnButton.style.display = "block";
+                startButton.style.display = "none";
+                levelButton.style.display = "none";
+                document.getElementById("gameTitle").style.display = "none";
+                returnLink.style.display = "none";
+                playerScore = 0;
+                aiScore = 0;
+                updateScoreboard();
+                initializePlayers();
+                resetBall();
+                startBackgroundMusic();
+                gameLoop();
+            }
+        }
+
+        function returnToMenu() {
+            gameRunning = false;
+            canvas.style.display = "none";
+            scoreboard.style.display = "none";
+            returnButton.style.display = "none";
+            startButton.style.display = "inline-block";
+            levelButton.style.display = "inline-block";
+            document.getElementById("gameTitle").style.display = "block";
+            returnLink.style.display = "inline-block";
+            playerScore = 0;
+            aiScore = 0;
+            updateScoreboard();
+            players = [];
+            aiPlayers = [];
+            backgroundMusic.pause();
+        }
+
+        function initializePlayers() {
+            players = [{
+                x: 200,
+                y: canvas.height / 2,
+                vx: 0,
+                vy: 0,
+                color: "blue",
+            }];
+            aiPlayers = [];
+
+            for (let i = 0; i < 6; i++) {
+                players.push({
+                    x: 100 + Math.random() * 200,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * AI_SPEED,
+                    vy: (Math.random() - 0.5) * AI_SPEED,
+                    color: "lightblue",
+                });
+                aiPlayers.push({
+                    x: canvas.width - 100 - Math.random() * 200,
+                    y: Math.random() * canvas.height,
+                    vx: (Math.random() - 0.5) * AI_SPEED,
+                    vy: (Math.random() - 0.5) * AI_SPEED,
+                    color: "red",
+                });
+            }
+        }
+
+        function movePlayer() {
+            players[0].vx = 0;
+            players[0].vy = 0;
+            if (keys["ArrowUp"]) players[0].vy = -PLAYER_SPEED;
+            if (keys["ArrowDown"]) players[0].vy = PLAYER_SPEED;
+            if (keys["ArrowLeft"]) players[0].vx = -PLAYER_SPEED;
+            if (keys["ArrowRight"]) players[0].vx = PLAYER_SPEED;
+
+            players.forEach((player) => {
+                player.x += player.vx;
+                player.y += player.vy;
+                handleWallCollision(player);
+            });
+        }
+
+        function moveAIPlayers() {
+            [...players.slice(1), ...aiPlayers].forEach((ai) => {
+                if (Math.random() < 0.02) {
+                    ai.vx = (Math.random() - 0.5) * AI_SPEED;
+                    ai.vy = (Math.random() - 0.5) * AI_SPEED;
+                }
+                ai.x += ai.vx;
+                ai.y += ai.vy;
+                handleWallCollision(ai);
+            });
+
+            let closestOpponent = null;
+            let minDistance = Infinity;
+            aiPlayers.forEach((opponent) => {
+                const dx = ball.x - opponent.x;
+                const dy = ball.y - opponent.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestOpponent = opponent;
+                }
+            });
+
+            if (closestOpponent) {
+                const dx = ball.x - closestOpponent.x;
+                const dy = ball.y - closestOpponent.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > 0) {
+                    closestOpponent.vx = (dx / distance) * CHASING_AI_SPEED;
+                    closestOpponent.vy = (dy / distance) * CHASING_AI_SPEED;
+                }
+                if (distance < STEAL_DISTANCE) {
+                    const stealChance = Math.random();
+                    if (stealChance > 0.8) {
+                        ball.vx = closestOpponent.vx * 1.2;
+                        ball.vy = closestOpponent.vy * 1.2;
+                    }
+                }
+            }
+        }
+
+        function handleWallCollision(entity) {
+            if (entity.x - PLAYER_RADIUS < 0) {
+                entity.x = PLAYER_RADIUS;
+                entity.vx = Math.abs(entity.vx);
+            }
+            if (entity.x + PLAYER_RADIUS > canvas.width) {
+                entity.x = canvas.width - PLAYER_RADIUS;
+                entity.vx = -Math.abs(entity.vx);
+            }
+            if (entity.y - PLAYER_RADIUS < 0) {
+                entity.y = PLAYER_RADIUS;
+                entity.vy = Math.abs(entity.vy);
+            }
+            if (entity.y + PLAYER_RADIUS > canvas.height) {
+                entity.y = canvas.height - PLAYER_RADIUS;
+                entity.vy = -Math.abs(entity.vy);
+            }
+        }
+
+        function moveBall() {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vx *= FRICTION;
+            ball.vy *= FRICTION;
+
+            if (ball.y - BALL_RADIUS <= 0) {
+                ball.y = BALL_RADIUS;
+                ball.vy = Math.abs(ball.vy);
+            } else if (ball.y + BALL_RADIUS >= canvas.height) {
+                ball.y = canvas.height - BALL_RADIUS;
+                ball.vy = -Math.abs(ball.vy);
+            }
+
+            if (ball.x - BALL_RADIUS <= 0) {
+                ball.x = BALL_RADIUS;
+                ball.vx = Math.abs(ball.vx);
+            } else if (ball.x + BALL_RADIUS >= canvas.width) {
+                ball.x = canvas.width - BALL_RADIUS;
+                ball.vx = -Math.abs(ball.vx);
+            }
+
+            if (ball.x - BALL_RADIUS <= GOAL_WIDTH && ball.y > canvas.height / 2 - GOAL_HEIGHT / 2 && ball.y < canvas.height / 2 + GOAL_HEIGHT / 2) {
+                aiScore++;
+                resetBall();
+            } else if (ball.x + BALL_RADIUS >= canvas.width - GOAL_WIDTH && ball.y > canvas.height / 2 - GOAL_HEIGHT / 2 && ball.y < canvas.height / 2 + GOAL_HEIGHT / 2) {
+                playerScore++;
+                resetBall();
+            }
+
+            [...players, ...aiPlayers].forEach((player) => {
+                const dx = ball.x - player.x;
+                const dy = ball.y - player.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < BALL_RADIUS + PLAYER_RADIUS) {
+                    const angle = Math.atan2(dy, dx);
+                    ball.vx = Math.cos(angle) * MAX_BALL_SPEED;
+                    ball.vy = Math.sin(angle) * MAX_BALL_SPEED;
+                }
+            });
+
+            updateScoreboard();
+            checkForWin();
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.vx = (Math.random() - 0.5) * MAX_BALL_SPEED;
+            ball.vy = (Math.random() - 0.5) * MAX_BALL_SPEED;
+        }
+
+        function updateScoreboard() {
+            scoreboard.textContent = `Player: ${playerScore} | AI: ${aiScore}`;
+        }
+
+        function checkForWin() {
+            if (playerScore >= WINNING_SCORE || aiScore >= WINNING_SCORE) {
+                alert(playerScore >= WINNING_SCORE ? "Player Wins!" : "AI Wins!");
+                returnToMenu();
+            }
+        }
+
+        function drawField() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#c0392b";
+            ctx.fillRect(0, canvas.height / 2 - GOAL_HEIGHT / 2, GOAL_WIDTH, GOAL_HEIGHT);
+            ctx.fillRect(canvas.width - GOAL_WIDTH, canvas.height / 2 - GOAL_HEIGHT / 2, GOAL_WIDTH, GOAL_HEIGHT);
+
+            [...players, ...aiPlayers].forEach((player) => {
+                ctx.beginPath();
+                ctx.arc(player.x, player.y, PLAYER_RADIUS, 0, Math.PI * 2);
+                ctx.fillStyle = player.color;
+                ctx.fill();
+            });
+
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, BALL_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = ball.color;
+            ctx.fill();
+        }
+
+        function gameLoop() {
+            if (gameRunning) {
+                movePlayer();
+                moveAIPlayers();
+                moveBall();
+                drawField();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+    </script>
+</body>
+</html>

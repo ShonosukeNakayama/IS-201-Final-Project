@@ -1,0 +1,59 @@
+body {
+    /* background-image: url(../images/cool-background\ \(1\).jpeg); */
+    /* background-color: rgb(242, 251, 255); */
+    /* background-image: url(../images/background1.jpeg); */
+    background-image: url(../images/cool-background\ \(4\).jpeg);
+}
+
+a:hover {
+    text-decoration: underline;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.heading {
+    color: rgb(243, 153, 195);
+    text-align: center;
+    font-family: cursive;
+    font-size: 26px;
+    background-image: url(../images/unpredictable1.jpeg);
+    border: 5px solid rgb(28, 26, 28)
+        
+}
+
+.box {
+    background-color: rgb(223, 174, 228);
+    padding: 20px;
+    border: 5px;
+    margin: 0px;
+}
+
+.box2 {
+    font-size: 22px;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    color: white;
+}
+
+.bulletpoints{
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    font: bold;
+    font-size: 16px;
+    font-style: italic;
+}
+
+.tablecontent {
+    font-size: 24px;
+    font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+    
+}
+
+.maincontent {
+    font-size: 18px;
+    font-family:'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+
+/* Responsive styles for iframe (YouTube video) */
+/* iframe {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+} */
